@@ -1,4 +1,4 @@
-const { resolve, basename } = require('path');
+const { resolve, join } = require('path');
 const {
   app, Menu, Tray, dialog,
 } = require('electron');
@@ -8,11 +8,13 @@ const fixPath = require('fix-path');
 const fs = require('fs');
 
 const Store = require('electron-store');
-const Sentry = require('@sentry/electron');
+/* const Sentry = require('@sentry/electron'); */
 
 fixPath();
 
-Sentry.init({ dsn: 'https://18c9943a576d41248b195b5678f2724e@sentry.io/1506479' });
+/* Sentry.init({
+  dsn: 'https://18c9943a576d41248b195b5678f2724e@sentry.io/1506479',
+}); */
 
 const schema = {
   projects: {
@@ -58,7 +60,10 @@ function render(tray = mainTray) {
       {
         label: locale.remove,
         click: () => {
-          store.set('projects', JSON.stringify(projects.filter(item => item.path !== path)));
+          store.set(
+            'projects',
+            JSON.stringify(projects.filter(item => item.path !== path)),
+          );
           render();
         },
       },
@@ -74,18 +79,15 @@ function render(tray = mainTray) {
         if (!result) return;
 
         const [path] = result;
-        const name = basename(path);
+        const folders = fs.readdirSync(path).filter(folder => fs.lstatSync(join(path, folder)).isDirectory());
 
-        store.set(
-          'projects',
-          JSON.stringify([
-            ...projects,
-            {
-              path,
-              name,
-            },
-          ]),
-        );
+        const newProjects = folders
+          .map(folderName => ({
+            path: join(path, folderName),
+            name: folderName,
+          }));
+
+        store.set('projects', JSON.stringify([...projects, ...newProjects]));
 
         render();
       },
